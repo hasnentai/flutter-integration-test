@@ -1,0 +1,113 @@
+name: Flutter Integration Tests (Advanced)
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      flutter_version:
+        description: 'Flutter version to test with'
+        required: false
+        default: '3.32.8'
+        type: string
+
+jobs:
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        flutter_version: ['3.32.8', '3.32.0'] # Test with multiple Flutter versions
+        include:
+          - flutter_version: '3.32.8'
+            display_name: 'Latest Stable'
+          - flutter_version: '3.32.0'
+            display_name: 'Previous Stable'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ matrix.flutter_version }}
+          channel: 'stable'
+          
+      - name: Cache Flutter dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            .dart_tool
+            build
+          key: ${{ runner.os }}-flutter-${{ matrix.flutter_version }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-${{ matrix.flutter_version }}-
+            
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Verify Flutter setup
+        run: |
+          flutter doctor -v
+          flutter --version
+          
+      - name: List available devices
+        run: flutter devices
+        
+      - name: Run Integration Tests
+        id: integration-tests
+        run: |
+          echo "Running integration tests with Flutter ${{ matrix.flutter_version }}"
+          flutter drive \
+            --driver test_driver/integration_test.dart \
+            --target integration_test/test.dart \
+            -d web-server \
+            --headless \
+            --timeout 120 \
+            --verbose
+        env:
+          FLUTTER_TEST_TIMEOUT: 120
+          FLUTTER_DRIVE_TIMEOUT: 120
+          
+      - name: Capture screenshots on failure
+        if: failure()
+        run: |
+          echo "Tests failed, capturing debug information..."
+          flutter devices
+          ps aux | grep flutter
+          
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts-${{ matrix.flutter_version }}
+          path: |
+            build/
+            .dart_tool/
+            .flutter-plugins
+            .flutter-plugins-dependencies
+          retention-days: 30
+          
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "## Integration Test Results for ${{ matrix.display_name }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.integration-tests.outcome }}" == "success" ]; then
+            echo "✅ **PASSED** - All integration tests completed successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **FAILED** - Integration tests encountered errors" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Flutter Version:** ${{ matrix.flutter_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Runner OS:** ${{ runner.os }}" >> $GITHUB_STEP_SUMMARY 
