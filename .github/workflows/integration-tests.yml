@@ -70,6 +70,21 @@ jobs:
           ps aux | grep chromedriver
           netstat -tlnp | grep 4444 || echo "Port 4444 not listening"
           
+      - name: Setup Virtual Display for Chrome
+        run: |
+          # Install Xvfb (virtual framebuffer)
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          
+          # Start virtual display
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+          sleep 3
+          
+          # Verify virtual display is running
+          ps aux | grep Xvfb
+          echo "DISPLAY variable set to: $DISPLAY"
+          
       - name: List available devices
         run: flutter devices
         
@@ -78,6 +93,7 @@ jobs:
           # Set environment variables
           export FLUTTER_TEST_TIMEOUT=120
           export FLUTTER_DRIVE_TIMEOUT=120
+          export DISPLAY=:99
           
           # Run tests with Chrome device (now WebDriver is available on 4444)
           flutter drive \
@@ -91,6 +107,7 @@ jobs:
         env:
           FLUTTER_TEST_TIMEOUT: 120
           FLUTTER_DRIVE_TIMEOUT: 120
+          DISPLAY: :99
           
       - name: Upload test results
         if: always()
