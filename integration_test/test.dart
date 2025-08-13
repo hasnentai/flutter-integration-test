@@ -34,7 +34,7 @@ void main() async {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('Button_mwws')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('dashboard1')), findsOneWidget);
+      expect(find.byKey(const ValueKey('dashboard')), findsOneWidget);
       await tester.pumpAndSettle();
     });
 
