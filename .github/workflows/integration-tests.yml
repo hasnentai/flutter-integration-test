@@ -47,8 +47,8 @@ jobs:
           echo "Chrome version: $CHROME_VERSION"
           
           # Download ChromeDriver using the new Chrome for Testing format
-          # Format: https://storage.googleapis.com/chrome-for-testing-public/{VERSION}/linux64/chromedriver-linux64.zip
-          CHROMEDRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/$CHROME_VERSION/linux64/chromedriver-linux64.zip"
+          # Format: https://storage.googleapis.com/chrome-for-testing-public/139.0.7258.68/linux64/chromedriver-linux64.zip
+          CHROMEDRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/139.0.7258.68/linux64/chromedriver-linux64.zip"
           echo "Downloading ChromeDriver from: $CHROMEDRIVER_URL"
           
           wget -O /tmp/chromedriver.zip "$CHROMEDRIVER_URL"
