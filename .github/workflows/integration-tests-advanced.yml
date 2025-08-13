@@ -65,20 +65,51 @@ jobs:
       - name: List available devices
         run: flutter devices
         
+      - name: Setup Chrome Headless Environment
+        run: |
+          # Install Chrome and dependencies
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg2
+          
+          # Add Google Chrome repository
+          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          
+          # Install Google Chrome
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          
+          # Verify Chrome installation
+          google-chrome --version
+          
+          # Set up virtual display for headless operation
+          sudo apt-get install -y xvfb
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+          sleep 2
+          
       - name: Run Integration Tests
         id: integration-tests
         run: |
           echo "Running integration tests with Flutter ${{ matrix.flutter_version }}"
+          
+          # Set environment variables for headless mode
+          export CHROME_HEADLESS=true
+          export DISPLAY=:99
+          
+          # Run tests with Chrome in headless mode
           flutter drive \
             --driver test_driver/integration_test.dart \
             --target integration_test/test.dart \
-            -d web-server \
+            -d chrome \
             --headless \
             --timeout 120 \
+            --browser-name chrome \
             --verbose
         env:
           FLUTTER_TEST_TIMEOUT: 120
           FLUTTER_DRIVE_TIMEOUT: 120
+          DISPLAY: :99
           
       - name: Capture screenshots on failure
         if: failure()
@@ -86,6 +117,7 @@ jobs:
           echo "Tests failed, capturing debug information..."
           flutter devices
           ps aux | grep flutter
+          ps aux | grep chrome
           
       - name: Upload test artifacts
         if: always()
