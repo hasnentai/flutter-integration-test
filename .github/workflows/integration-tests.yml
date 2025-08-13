@@ -103,7 +103,8 @@ jobs:
             --headless \
             --timeout 120 \
             --browser-name chrome \
-            --driver-port=4444
+            --driver-port=4444 \
+            --verbose
         env:
           FLUTTER_TEST_TIMEOUT: 120
           FLUTTER_DRIVE_TIMEOUT: 120

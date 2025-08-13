@@ -24,6 +24,8 @@ void main() async {
       await tester.pumpWidget(const MyApp());
       await GoogleFonts.pendingFonts();
 
+      await tester.pumpAndSettle();
+
       await tester.enterText(
           find.byKey(const ValueKey('emailText')), 'test@gmail.com');
       await tester.pumpAndSettle();
@@ -33,6 +35,7 @@ void main() async {
       await tester.tap(find.byKey(const ValueKey('Button_mwws')));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('dashboard')), findsOneWidget);
+      await tester.pumpAndSettle();
     });
 
     testWidgets('Invalid Email and Password cannot be empty',
