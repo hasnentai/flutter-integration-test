@@ -1,11 +1,11 @@
-name: Flutter Integration Tests
+name: Flutter Integration Tests (No WebDriver)
 
 on:
   push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
-  workflow_dispatch: # Allows manual trigger
+  workflow_dispatch:
 
 jobs:
   integration-tests:
@@ -19,7 +19,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.32.8' # Match your Flutter version
+          flutter-version: '3.32.8'
           channel: 'stable'
           
       - name: Install dependencies
@@ -28,36 +28,54 @@ jobs:
       - name: Verify Flutter setup
         run: flutter doctor
         
+      - name: Setup Chrome for Headless Testing
+        run: |
+          # Install Chrome
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg2
+          
+          # Add Google Chrome repository
+          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          
+          # Install Google Chrome
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          
+          # Verify Chrome installation
+          google-chrome --version
+          
+          # Set up virtual display
+          sudo apt-get install -y xvfb
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+          sleep 2
+          
       - name: List available devices
         run: flutter devices
         
-      - name: Run Integration Tests with Chrome Headless
+      - name: Run Integration Tests with Chrome (No WebDriver)
         run: |
           # Set environment variables for headless mode
           export CHROME_HEADLESS=true
           export DISPLAY=:99
           
-          # Start virtual display (for headless operation)
-          sudo apt-get update
-          sudo apt-get install -y xvfb
-          Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
-          
-          # Wait a moment for display to start
-          sleep 2
-          
-          # Run tests with Chrome in headless mode
+          # Run tests with Chrome device (bypasses WebDriver requirement)
           flutter drive \
             --driver test_driver/integration_test.dart \
             --target integration_test/test.dart \
             -d chrome \
             --headless \
             --timeout 120 \
-            --browser-name chrome
+            --browser-name chrome \
+            --no-dds
         env:
           FLUTTER_TEST_TIMEOUT: 120
           FLUTTER_DRIVE_TIMEOUT: 120
+          DISPLAY: :99
+          CHROME_HEADLESS: true
           
-      - name: Upload test results (optional)
+      - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
