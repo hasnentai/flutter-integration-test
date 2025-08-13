@@ -54,7 +54,7 @@ jobs:
           wget -O /tmp/chromedriver.zip "$CHROMEDRIVER_URL"
           unzip /tmp/chromedriver.zip -d /tmp/
           sudo cp /tmp/chromedriver-linux64/chromedriver /usr/local/bin/
-          chmod +x /usr/local/bin/chromedriver
+          sudo chmod +x /usr/local/bin/chromedriver
           
           # Verify ChromeDriver installation
           chromedriver --version
