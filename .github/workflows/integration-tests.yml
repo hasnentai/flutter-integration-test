@@ -1,4 +1,4 @@
-name: Flutter Integration Tests
+name: Flutter Integration Tests & Build
 
 on:
   push:
@@ -89,6 +89,7 @@ jobs:
         run: flutter devices
         
       - name: Run Integration Tests with WebDriver
+        id: run-tests
         run: |
           # Set environment variables
           export FLUTTER_TEST_TIMEOUT=120
@@ -119,4 +120,50 @@ jobs:
             build/
             .dart_tool/
             /tmp/chromedriver.log
-          retention-days: 7 
+          retention-days: 7
+          
+  build:
+    name: Build App
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    if: success() # Only run if integration tests passed
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.8'
+          channel: 'stable'
+          
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Build Web App
+        run: |
+          flutter build web --release
+          
+      - name: Build Android APK
+        run: |
+          flutter build apk --release
+          
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            build/web/
+            build/app/outputs/flutter-apk/
+          retention-days: 30
+          
+      - name: Build Summary
+        run: |
+          echo "## 🚀 Build Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Integration Tests:** ✅ All tests passed" >> $GITHUB_STEP_SUMMARY
+          echo "**Web Build:** ✅ Built successfully" >> $GITHUB_STEP_SUMMARY
+          echo "**Android Build:** ✅ APK generated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Build artifacts are available for download above." >> $GITHUB_STEP_SUMMARY 
