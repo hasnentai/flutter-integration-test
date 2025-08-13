@@ -1,4 +1,4 @@
-name: Flutter Integration Tests (No WebDriver)
+name: Flutter Integration Tests
 
 on:
   push:
@@ -28,11 +28,11 @@ jobs:
       - name: Verify Flutter setup
         run: flutter doctor
         
-      - name: Setup Chrome for Headless Testing
+      - name: Setup Chrome and ChromeDriver
         run: |
           # Install Chrome
           sudo apt-get update
-          sudo apt-get install -y wget gnupg2
+          sudo apt-get install -y wget gnupg2 unzip curl
           
           # Add Google Chrome repository
           wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
@@ -42,25 +42,42 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
           
-          # Verify Chrome installation
-          google-chrome --version
+          # Get Chrome version
+          CHROME_VERSION=$(google-chrome --version | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
+          echo "Chrome version: $CHROME_VERSION"
           
-          # Set up virtual display
-          sudo apt-get install -y xvfb
-          export DISPLAY=:99
-          Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
-          sleep 2
+          # Download matching ChromeDriver
+          CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION")
+          echo "ChromeDriver version: $CHROMEDRIVER_VERSION"
+          
+          wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip"
+          unzip /tmp/chromedriver.zip -d /usr/local/bin/
+          chmod +x /usr/local/bin/chromedriver
+          
+          # Verify ChromeDriver installation
+          chromedriver --version
+          
+      - name: Start ChromeDriver on Port 4444
+        run: |
+          # Start ChromeDriver in background on port 4444
+          chromedriver --port=4444 --verbose --log-path=/tmp/chromedriver.log &
+          sleep 5
+          
+          # Verify ChromeDriver is running on port 4444
+          curl -s http://localhost:4444/status || echo "ChromeDriver not responding"
+          ps aux | grep chromedriver
+          netstat -tlnp | grep 4444 || echo "Port 4444 not listening"
           
       - name: List available devices
         run: flutter devices
         
-      - name: Run Integration Tests with Chrome (No WebDriver)
+      - name: Run Integration Tests with WebDriver
         run: |
-          # Set environment variables for headless mode
-          export CHROME_HEADLESS=true
-          export DISPLAY=:99
+          # Set environment variables
+          export FLUTTER_TEST_TIMEOUT=120
+          export FLUTTER_DRIVE_TIMEOUT=120
           
-          # Run tests with Chrome device (bypasses WebDriver requirement)
+          # Run tests with Chrome device (now WebDriver is available on 4444)
           flutter drive \
             --driver test_driver/integration_test.dart \
             --target integration_test/test.dart \
@@ -68,12 +85,10 @@ jobs:
             --headless \
             --timeout 120 \
             --browser-name chrome \
-            --no-dds
+            --driver-port=4444
         env:
           FLUTTER_TEST_TIMEOUT: 120
           FLUTTER_DRIVE_TIMEOUT: 120
-          DISPLAY: :99
-          CHROME_HEADLESS: true
           
       - name: Upload test results
         if: always()
@@ -83,4 +98,5 @@ jobs:
           path: |
             build/
             .dart_tool/
+            /tmp/chromedriver.log
           retention-days: 7 
